@@ -1,0 +1,75 @@
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: #07111f;
+  color: #f8fafc;
+  font-family: var(--font-space-grotesk), 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(77, 215, 176, 0.35);
+  color: #ffffff;
+}
+
+.leaflet-container {
+  background: #08111f;
+  font-family: inherit;
+}
+
+.location-marker {
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+}
+
+.location-marker span {
+  display: block;
+  border-radius: 9999px;
+}
+
+.location-marker-current {
+  background: rgba(77, 215, 176, 0.18);
+  box-shadow: 0 0 0 12px rgba(77, 215, 176, 0.12);
+}
+
+.location-marker-current span {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(135deg, #4dd7b0, #8dd9ff);
+  box-shadow: 0 0 0 3px rgba(7, 17, 31, 0.8);
+}
+
+.location-marker-nearby {
+  background: rgba(255, 202, 122, 0.18);
+  box-shadow: 0 0 0 10px rgba(255, 202, 122, 0.08);
+}
+
+.location-marker-nearby span {
+  width: 14px;
+  height: 14px;
+  background: #ffca7a;
+  box-shadow: 0 0 0 2px rgba(7, 17, 31, 0.8);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #f8fafc;
+  color: #0f172a;
+}

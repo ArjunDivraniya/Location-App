@@ -1,5 +1,4 @@
-import dynamic from 'next/dynamic';
-const AuthModal = dynamic(() => import('@/components/auth-modal').then((m) => m.default), { ssr: false });
+import AuthModal from '@/components/auth-modal';
 import { Globe2, MessageCircleMore, Radar, Route } from 'lucide-react';
 
 const featureCards = [

@@ -125,7 +125,7 @@ export function AuthPanel() {
           <MapPin size={16} className="text-aqua" />
           Location-first chat
         </div>
-        {message ?? 'After login, the dashboard will ask for your location and show the nearest active users.'}
+        {message ?? 'After login, the dashboard will ask for your location and show nearby users in your room.'}
       </div>
     </form>
   );

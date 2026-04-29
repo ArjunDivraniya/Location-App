@@ -84,7 +84,7 @@ export function Dashboard() {
       const point = { lat: current.latitude, lng: current.longitude };
       setCurrentLocation(point);
       setRoomKey(current.room_key);
-      setStatus(`Active room ${current.room_key}`);
+      setStatus(`Current room ${current.room_key}`);
     }
 
     const locations = (allLocationsResult.data ?? []) as LocationRow[];
@@ -263,10 +263,8 @@ export function Dashboard() {
 
     // Check permissions API (if available) to log current state before requesting
     try {
-      // @ts-ignore - permissions may not be on all browsers
-      if (navigator.permissions && navigator.permissions.query) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const perm = await (navigator as any).permissions.query({ name: 'geolocation' });
+      if ('permissions' in navigator && navigator.permissions?.query) {
+        const perm = await navigator.permissions.query({ name: 'geolocation' });
         console.log('[Dashboard] geolocation permission state before request:', perm.state);
         setStatus(`Geolocation permission: ${perm.state}`);
       }
@@ -503,7 +501,7 @@ export function Dashboard() {
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${isActive ? 'bg-green-100 text-green-800' : 'bg-white/5 text-white/70'}`}>
-                          {isActive ? 'Active' : 'Nearby'}
+                          {isActive ? 'In room' : 'Nearby'}
                         </span>
                         <span className="rounded-full bg-aqua/15 px-2 py-0.5 text-xs font-semibold text-aqua">{formatDistance(user.distanceKm)}</span>
                       </div>
@@ -578,7 +576,7 @@ export function Dashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isActive ? 'bg-green-100 text-green-800' : 'bg-white/5 text-white/70'}`}>
-                            {isActive ? 'Active' : 'Nearby'}
+                            {isActive ? 'In room' : 'Nearby'}
                           </span>
                           <span className="text-sm text-white/60">{formatDistance(user.distanceKm)}</span>
                         </div>

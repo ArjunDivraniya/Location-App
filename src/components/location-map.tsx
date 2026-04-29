@@ -59,13 +59,13 @@ export function LocationMap({ currentLocation, nearbyUsers, onPickLocation }: Lo
       try {
         // Try to patch default icon paths in case bundler changed asset locations.
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const L = module as any;
-          if (L && L.Icon && L.Icon.Default && typeof L.Icon.Default.mergeOptions === 'function') {
-            L.Icon.Default.mergeOptions({
-              iconRetinaUrl: (L as any).Icon.Default.imagePath ? (L as any).Icon.Default.imagePath + '/marker-icon-2x.png' : undefined,
-              iconUrl: (L as any).Icon.Default.imagePath ? (L as any).Icon.Default.imagePath + '/marker-icon.png' : undefined,
-              shadowUrl: (L as any).Icon.Default.imagePath ? (L as any).Icon.Default.imagePath + '/marker-shadow.png' : undefined,
+          const iconDefault = module.Icon.Default as typeof module.Icon.Default & { imagePath?: string };
+          if (module.Icon?.Default && typeof module.Icon.Default.mergeOptions === 'function') {
+            const imagePath = iconDefault.imagePath;
+            module.Icon.Default.mergeOptions({
+              iconRetinaUrl: imagePath ? `${imagePath}/marker-icon-2x.png` : undefined,
+              iconUrl: imagePath ? `${imagePath}/marker-icon.png` : undefined,
+              shadowUrl: imagePath ? `${imagePath}/marker-shadow.png` : undefined,
             });
           }
         } catch (e) {

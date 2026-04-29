@@ -10,9 +10,10 @@ type ChatPanelProps = {
   profileMap: Record<string, ProfileRow>;
   currentUserId: string;
   onSendMessage: (message: string) => Promise<void>;
+  compact?: boolean;
 };
 
-export function ChatPanel({ roomKey, messages, profileMap, currentUserId, onSendMessage }: ChatPanelProps) {
+export function ChatPanel({ roomKey, messages, profileMap, currentUserId, onSendMessage, compact = false }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -40,15 +41,15 @@ export function ChatPanel({ roomKey, messages, profileMap, currentUserId, onSend
   }
 
   return (
-    <section className="flex h-full min-h-[760px] flex-col rounded-[28px] border border-white/10 bg-gradient-to-b from-white/8 to-white/4 shadow-glow backdrop-blur">
+    <section className={`flex h-full flex-col border border-white/10 bg-gradient-to-b from-white/8 to-white/4 shadow-glow backdrop-blur ${compact ? 'min-h-0 rounded-[24px]' : 'min-h-[760px] rounded-[28px]'}`}>
       {/* Header */}
-      <div className="border-b border-white/10 px-6 py-4">
+      <div className={`border-b border-white/10 ${compact ? 'px-4 py-3' : 'px-6 py-4'}`}>
         <p className="text-xs uppercase tracking-[0.35em] text-white/40">Live room</p>
-        <h2 className="mt-1 text-lg font-semibold text-white">{roomKey ?? 'No room active yet'}</h2>
+        <h2 className={`${compact ? 'mt-1 text-base' : 'mt-1 text-lg'} font-semibold text-white`}>{roomKey ?? 'No room active yet'}</h2>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 space-y-4 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(77,215,176,0.06),transparent_35%)] px-4 py-6 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+      <div className={`flex-1 space-y-4 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(77,215,176,0.06),transparent_35%)] scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 ${compact ? 'px-3 py-4' : 'px-4 py-6'}`}>
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center space-y-2">
@@ -86,7 +87,7 @@ export function ChatPanel({ roomKey, messages, profileMap, currentUserId, onSend
       </div>
 
       {/* Input Area */}
-      <form onSubmit={handleSubmit} className="border-t border-white/10 bg-black/30 px-4 py-4">
+      <form onSubmit={handleSubmit} className={`border-t border-white/10 bg-black/30 ${compact ? 'px-3 py-3' : 'px-4 py-4'}`}>
         <div className="flex gap-2 rounded-full border border-white/10 bg-black/45 px-4 py-2 transition focus-within:border-aqua/60 focus-within:bg-black/65">
           <input
             id="message"

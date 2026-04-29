@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, LocateFixed, LogOut, MapPinned, Users, X } from 'lucide-react';
+import { ArrowLeft, Loader2, LocateFixed, LogOut, MapPinned, Users } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase';
 import type { ChatMessageRow, LocationRow, ProfileRow } from '@/lib/types';
 import type { GeoPoint, NearbyUser } from '@/lib/geo';
@@ -19,7 +19,11 @@ const LocationMap = dynamic(() => import('@/components/location-map').then((modu
   ),
 });
 
-export function Dashboard() {
+type DashboardProps = {
+  view?: 'dashboard' | 'chat';
+};
+
+export function Dashboard({ view = 'dashboard' }: DashboardProps) {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [loading, setLoading] = useState(true);
@@ -34,7 +38,6 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [liveEnabled, setLiveEnabled] = useState(false);
-  const [showChatMobile, setShowChatMobile] = useState(false);
   const [showUsersModal, setShowUsersModal] = useState(false);
   const liveWatchId = useRef<number | null>(null);
   const pendingMessages = useRef<
@@ -389,12 +392,81 @@ export function Dashboard() {
     { label: 'Status', value: status, icon: Loader2 },
   ];
 
+  const roomMembers = roomKey ? nearbyUsers.filter((user) => user.roomKey === roomKey) : [];
+  const roomMemberCount = roomKey ? roomMembers.length + 1 : 0;
+
   if (loading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center text-white/70">
         <Loader2 className="mr-2 animate-spin" size={18} />
         Preparing your dashboard...
       </div>
+    );
+  }
+
+  if (view === 'chat') {
+    return (
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3 rounded-[28px] border border-white/10 bg-white/6 px-4 py-4 shadow-glow backdrop-blur sm:px-6">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/6 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10"
+          >
+            <ArrowLeft size={16} />
+            Back to dashboard
+          </button>
+          <div className="text-right">
+            <p className="text-xs uppercase tracking-[0.35em] text-white/40">Live room</p>
+            <p className="mt-1 max-w-[220px] truncate text-sm font-semibold text-white sm:max-w-xs sm:text-base">{roomKey ?? 'No room active yet'}</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <article className="rounded-[24px] border border-white/10 bg-black/20 p-4 shadow-glow">
+                <p className="text-xs uppercase tracking-[0.3em] text-white/40">Room members</p>
+                <p className="mt-2 text-2xl font-semibold text-white">{roomMemberCount > 0 ? roomMemberCount : 0}</p>
+                <p className="mt-1 text-sm text-white/60">You plus nearby people in the same room.</p>
+              </article>
+              <article className="rounded-[24px] border border-white/10 bg-black/20 p-4 shadow-glow">
+                <p className="text-xs uppercase tracking-[0.3em] text-white/40">Current room</p>
+                <p className="mt-2 break-all text-sm font-semibold text-white">{roomKey ?? 'No room assigned yet'}</p>
+                <p className="mt-1 text-sm text-white/60">Move your pin to join another room.</p>
+              </article>
+            </div>
+
+            <div className="rounded-[24px] border border-white/10 bg-white/6 p-4 shadow-glow backdrop-blur">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-white">Room members</span>
+                <span className="text-xs text-white/50">{roomMemberCount > 0 ? `${roomMemberCount} total` : 'No members yet'}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {roomMembers.length > 0 ? (
+                  roomMembers.slice(0, 6).map((user) => (
+                    <span key={user.id} className="rounded-full bg-aqua/15 px-3 py-1 text-xs font-semibold text-aqua">
+                      {user.displayName}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-white/50">Your room members will appear here.</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="min-h-[78vh] overflow-hidden rounded-[28px] border border-white/10 bg-white/6 shadow-glow">
+            <ChatPanel
+              roomKey={roomKey}
+              messages={messages}
+              profileMap={profileMap}
+              currentUserId={sessionUserId ?? ''}
+              onSendMessage={handleSendMessage}
+              compact
+            />
+          </div>
+        </div>
+      </section>
     );
   }
 
@@ -441,7 +513,7 @@ export function Dashboard() {
 
           {/* Mobile: open chat full-screen */}
           <button
-            onClick={() => setShowChatMobile(true)}
+            onClick={() => router.push('/dashboard/chat')}
             className="inline-flex items-center gap-1 rounded-2xl border border-white/12 bg-white/6 px-2 py-2 text-xs font-semibold text-white transition hover:bg-white/10 hover:border-white/20 md:hidden"
             aria-label="Open chat"
           >
@@ -540,21 +612,6 @@ export function Dashboard() {
         />
       </section>
 
-      {showChatMobile ? (
-        <div className="fixed inset-0 z-50 flex items-stretch bg-black/80 p-4 md:hidden">
-          <div className="mx-auto w-full max-w-md">
-            <div className="flex items-center justify-between pb-3">
-              <div className="text-white font-semibold">Chat</div>
-              <button onClick={() => setShowChatMobile(false)} className="rounded-full bg-white/6 p-2 text-white">
-                <X />
-              </button>
-            </div>
-            <div className="h-[calc(100vh-96px)] overflow-hidden rounded-2xl border border-white/10 bg-white/6">
-              <ChatPanel roomKey={roomKey} messages={messages} profileMap={profileMap} currentUserId={sessionUserId ?? ''} onSendMessage={handleSendMessage} />
-            </div>
-          </div>
-        </div>
-      ) : null}
       {showUsersModal ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4">
           <div className="mx-auto w-full max-w-lg">

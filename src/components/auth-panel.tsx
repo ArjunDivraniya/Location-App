@@ -84,7 +84,7 @@ export function AuthPanel() {
           type="button"
           onClick={() => setMode('signup')}
           disabled={loading}
-          className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition ${mode === 'signup' ? 'bg-aqua text-ink shadow-[0_8px_24px_rgba(77,215,176,0.35)]' : 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'}`}
+          className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition ${mode === 'signup' ? 'bg-aqua text-white shadow-[0_8px_24px_rgba(77,215,176,0.35)]' : 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'}`}
         >
           Sign up
         </button>
@@ -92,7 +92,7 @@ export function AuthPanel() {
           type="button"
           onClick={() => setMode('login')}
           disabled={loading}
-          className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition ${mode === 'login' ? 'bg-aqua text-ink shadow-[0_8px_24px_rgba(77,215,176,0.35)]' : 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'}`}
+          className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition ${mode === 'login' ? 'bg-aqua text-white shadow-[0_8px_24px_rgba(77,215,176,0.35)]' : 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'}`}
         >
           Log in
         </button>
@@ -115,7 +115,7 @@ export function AuthPanel() {
         <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 outline-none placeholder:text-white/30 focus:border-aqua/60" placeholder="••••••••" minLength={6} required />
       </label>
 
-      <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-aqua to-[#66e6d3] px-4 py-3.5 font-semibold text-[#03110e] shadow-[0_10px_30px_rgba(77,215,176,0.28)] transition hover:from-[#74ebda] hover:to-[#4dd7b0] disabled:cursor-not-allowed disabled:opacity-70">
+      <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-aqua to-[#66e6d3] px-4 py-3.5 font-semibold text-white shadow-[0_10px_30px_rgba(77,215,176,0.28)] transition hover:from-[#74ebda] hover:to-[#4dd7b0] disabled:cursor-not-allowed disabled:opacity-70">
         {loading ? <Loader2 size={18} className="animate-spin" /> : mode === 'signup' ? <UserPlus size={18} /> : <LogIn size={18} />}
         {loading ? (mode === 'signup' ? 'Creating...' : 'Logging in...') : mode === 'signup' ? 'Create account' : 'Log in'}
       </button>

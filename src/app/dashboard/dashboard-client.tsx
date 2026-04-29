@@ -2,6 +2,10 @@
 
 import { Dashboard } from '@/components/dashboard';
 
-export function DashboardClient() {
-  return <Dashboard />;
+type DashboardClientProps = {
+  view?: 'dashboard' | 'chat';
+};
+
+export function DashboardClient({ view = 'dashboard' }: DashboardClientProps) {
+  return <Dashboard view={view} />;
 }

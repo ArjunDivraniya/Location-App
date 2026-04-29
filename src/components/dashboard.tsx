@@ -32,7 +32,17 @@ export function Dashboard() {
   const [roomKey, setRoomKey] = useState<string | null>(null);
   const [status, setStatus] = useState('Loading your proximity workspace...');
   const [error, setError] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
   const liveWatchId = useRef<number | null>(null);
+  const pendingMessages = useRef<
+    Array<{
+      tempId: string;
+      roomKey: string;
+      userId: string;
+      body: string;
+      createdAt: string;
+    }>
+  >([]);
 
   const ensureProfile = useCallback(async (userId: string, displayName: string) => {
     const { data } = await supabase.from('profiles').select('id, display_name, avatar_url').eq('id', userId).maybeSingle();
@@ -154,6 +164,7 @@ export function Dashboard() {
   useEffect(() => {
     if (!roomKey) {
       setMessages([]);
+      pendingMessages.current = [];
       return;
     }
 
@@ -162,7 +173,26 @@ export function Dashboard() {
       .channel(`room:${roomKey}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'room_messages', filter: `room_key=eq.${roomKey}` }, (payload) => {
         const nextMessage = payload.new as ChatMessageRow;
-        setMessages((current) => [...current.filter((message) => message.id !== nextMessage.id), nextMessage].sort((left, right) => left.created_at.localeCompare(right.created_at)));
+        setMessages((current) => {
+          const pendingMatchIndex = pendingMessages.current.findIndex(
+            (pending) =>
+              pending.roomKey === nextMessage.room_key &&
+              pending.userId === nextMessage.user_id &&
+              pending.body === nextMessage.body &&
+              Math.abs(new Date(pending.createdAt).getTime() - new Date(nextMessage.created_at).getTime()) < 7000
+          );
+
+          if (pendingMatchIndex !== -1) {
+            const [pendingMatch] = pendingMessages.current.splice(pendingMatchIndex, 1);
+            return [...current.filter((message) => message.id !== pendingMatch.tempId && message.id !== nextMessage.id), nextMessage].sort((left, right) => left.created_at.localeCompare(right.created_at));
+          }
+
+          if (current.some((message) => message.id === nextMessage.id)) {
+            return current;
+          }
+
+          return [...current, nextMessage].sort((left, right) => left.created_at.localeCompare(right.created_at));
+        });
       })
       .subscribe();
 
@@ -214,34 +244,44 @@ export function Dashboard() {
   }
 
   async function requestLiveLocation() {
+    if (locationLoading) {
+      return;
+    }
+
     if (!navigator.geolocation) {
       setError('Geolocation is not supported in this browser.');
       return;
     }
 
+    setLocationLoading(true);
     setStatus('Requesting location permission...');
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const point = { lat: position.coords.latitude, lng: position.coords.longitude };
-        await persistLocation(point);
-        setStatus('Live location enabled');
+        try {
+          const point = { lat: position.coords.latitude, lng: position.coords.longitude };
+          await persistLocation(point);
+          setStatus('Live location enabled');
 
-        if (liveWatchId.current !== null) {
-          navigator.geolocation.clearWatch(liveWatchId.current);
+          if (liveWatchId.current !== null) {
+            navigator.geolocation.clearWatch(liveWatchId.current);
+          }
+
+          liveWatchId.current = navigator.geolocation.watchPosition(
+            async (nextPosition) => {
+              const nextPoint = { lat: nextPosition.coords.latitude, lng: nextPosition.coords.longitude };
+              await persistLocation(nextPoint, false);
+            },
+            (watchError) => setError(watchError.message),
+            { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+          );
+        } finally {
+          setLocationLoading(false);
         }
-
-        liveWatchId.current = navigator.geolocation.watchPosition(
-          async (nextPosition) => {
-            const nextPoint = { lat: nextPosition.coords.latitude, lng: nextPosition.coords.longitude };
-            await persistLocation(nextPoint, false);
-          },
-          (watchError) => setError(watchError.message),
-          { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
-        );
       },
       (geoError) => {
         setError(geoError.message);
         setStatus('Location permission was denied');
+        setLocationLoading(false);
       },
       { enableHighAccuracy: true, timeout: 15000 }
     );
@@ -266,15 +306,17 @@ export function Dashboard() {
       return;
     }
 
-    // Optimistic update - show message immediately
+    const createdAt = new Date().toISOString();
+    const tempId = crypto.randomUUID();
     const optimisticMessage: ChatMessageRow = {
-      id: crypto.randomUUID(),
+      id: tempId,
       room_key: roomKey,
       user_id: sessionUserId,
       body: message,
-      created_at: new Date().toISOString(),
+      created_at: createdAt,
     };
-    setMessages((current) => [...current, optimisticMessage]);
+    pendingMessages.current.push({ tempId, roomKey, userId: sessionUserId, body: message, createdAt });
+    setMessages((current) => [...current, optimisticMessage].sort((left, right) => left.created_at.localeCompare(right.created_at)));
 
     const { error: sendError } = await supabase.from('room_messages').insert({
       room_key: roomKey,
@@ -284,7 +326,7 @@ export function Dashboard() {
 
     if (sendError) {
       setError(sendError.message);
-      // Remove optimistic message if it fails
+      pendingMessages.current = pendingMessages.current.filter((pending) => pending.tempId !== tempId);
       setMessages((current) => current.filter((msg) => msg.id !== optimisticMessage.id));
     }
   }
@@ -321,11 +363,11 @@ export function Dashboard() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button onClick={requestLiveLocation} className="inline-flex items-center gap-2 rounded-2xl bg-aqua px-4 py-3 text-sm font-semibold text-ink transition hover:bg-[#72e7d5]">
-            <LocateFixed size={16} />
-            Enable live location
+          <button onClick={requestLiveLocation} disabled={locationLoading} className="inline-flex items-center gap-2 rounded-2xl border border-[#7ff0e0]/60 bg-[#74ebda] px-4 py-3 text-sm font-semibold text-[#04110f] shadow-[0_10px_30px_rgba(77,215,176,0.34)] transition hover:bg-[#84f0e3] hover:shadow-[0_14px_34px_rgba(77,215,176,0.42)] disabled:cursor-not-allowed disabled:border-[#7ff0e0]/30 disabled:bg-[#5fd9c7] disabled:text-[#071715] disabled:opacity-100">
+            {locationLoading ? <Loader2 size={16} className="animate-spin text-[#071715]" /> : <LocateFixed size={16} className="text-[#071715]" />}
+            <span className="whitespace-nowrap">{locationLoading ? 'Requesting location...' : 'Enable live location'}</span>
           </button>
-          <button onClick={handleSignOut} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black/30">
+          <button onClick={handleSignOut} className="inline-flex items-center gap-2 rounded-2xl border border-white/12 bg-white/6 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 hover:border-white/20">
             <LogOut size={16} />
             Sign out
           </button>
@@ -346,8 +388,8 @@ export function Dashboard() {
 
       {error ? <div className="rounded-3xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
 
-      <section className="grid gap-6 lg:grid-cols-[0.85fr_1.3fr] h-[600px] lg:h-[650px]">
-        <div className="space-y-4 overflow-y-auto">
+      <section className="grid gap-6 lg:grid-cols-[0.85fr_1.3fr] min-h-[760px] lg:h-[calc(100vh-260px)] xl:h-[calc(100vh-220px)]">
+        <div className="space-y-4 overflow-y-auto lg:max-h-full">
           <LocationMap
             currentLocation={currentLocation}
             nearbyUsers={nearbyUsers}

@@ -99,11 +99,12 @@ export function ChatPanel({ roomKey, messages, profileMap, currentUserId, onSend
           <button
             type="submit"
             disabled={!roomKey || sending || !draft.trim()}
-            className="inline-flex min-w-[96px] items-center justify-center gap-2 rounded-full border border-[#d7fff1] bg-[#74ebda] px-4 py-2 text-sm font-semibold text-[#04110f] shadow-[0_8px_24px_rgba(77,215,176,0.26)] transition hover:bg-[#84f0e3] hover:shadow-[0_12px_28px_rgba(77,215,176,0.34)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Send message"
+            className="inline-flex min-w-[110px] items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[#00cfa6] to-[#00b39a] px-5 py-2 text-sm font-semibold text-white shadow-lg transition-transform duration-150 ease-out transform hover:scale-[1.03] focus:outline-none focus:ring-4 focus:ring-[#00d3b0]/30 active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed"
             title="Send message"
           >
-            <Send size={16} />
-            <span>Send</span>
+            <Send size={16} className="text-white" />
+            <span className="leading-4">Send</span>
           </button>
         </div>
       </form>

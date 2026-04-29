@@ -33,6 +33,7 @@ export function Dashboard() {
   const [status, setStatus] = useState('Loading your proximity workspace...');
   const [error, setError] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [liveEnabled, setLiveEnabled] = useState(false);
   const liveWatchId = useRef<number | null>(null);
   const pendingMessages = useRef<
     Array<{
@@ -244,19 +245,40 @@ export function Dashboard() {
   }
 
   async function requestLiveLocation() {
+    // Debugging instrumentation added to trace why permission prompt may not appear.
+    console.log('[Dashboard] requestLiveLocation called, locationLoading=', locationLoading);
+
     if (locationLoading) {
+      console.log('[Dashboard] requestLiveLocation aborted: already loading');
       return;
     }
 
     if (!navigator.geolocation) {
+      console.log('[Dashboard] geolocation API not available');
       setError('Geolocation is not supported in this browser.');
       return;
     }
 
+    // Check permissions API (if available) to log current state before requesting
+    try {
+      // @ts-ignore - permissions may not be on all browsers
+      if (navigator.permissions && navigator.permissions.query) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const perm = await (navigator as any).permissions.query({ name: 'geolocation' });
+        console.log('[Dashboard] geolocation permission state before request:', perm.state);
+        setStatus(`Geolocation permission: ${perm.state}`);
+      }
+    } catch (permErr) {
+      console.log('[Dashboard] permissions.query error', permErr);
+    }
+
     setLocationLoading(true);
     setStatus('Requesting location permission...');
+
+    // Call through getCurrentPosition and log the callbacks so we can see if browser invoked them
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        console.log('[Dashboard] getCurrentPosition success', position.coords);
         try {
           const point = { lat: position.coords.latitude, lng: position.coords.longitude };
           await persistLocation(point);
@@ -268,22 +290,46 @@ export function Dashboard() {
 
           liveWatchId.current = navigator.geolocation.watchPosition(
             async (nextPosition) => {
+              console.log('[Dashboard] watchPosition update', nextPosition.coords);
               const nextPoint = { lat: nextPosition.coords.latitude, lng: nextPosition.coords.longitude };
               await persistLocation(nextPoint, false);
             },
-            (watchError) => setError(watchError.message),
+            (watchError) => {
+              console.log('[Dashboard] watchPosition error', watchError);
+              setError(watchError.message);
+              setLiveEnabled(false);
+            },
             { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
           );
+          // Mark live mode active when watch is established
+          setLiveEnabled(true);
         } finally {
           setLocationLoading(false);
         }
       },
       (geoError) => {
-        setError(geoError.message);
-        setStatus('Location permission was denied');
+        console.log('[Dashboard] getCurrentPosition error', geoError);
+        // geoError.code: 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT
+        let message = geoError?.message || 'Location request failed';
+        try {
+          if (geoError?.code === 1) {
+            message = 'Location permission denied. Allow location access in your browser settings.';
+          } else if (geoError?.code === 2) {
+            message = 'Position unavailable. Please try again or check your device settings.';
+          } else if (geoError?.code === 3) {
+            message = 'Location request timed out. Please try again.';
+          }
+        } catch (e) {
+          // ignore
+        }
+
+        setError(message);
+        setStatus('Location unavailable');
         setLocationLoading(false);
+        setLiveEnabled(false);
       },
-      { enableHighAccuracy: true, timeout: 15000 }
+      // Increase timeout to 30s to reduce spurious timeouts on slow devices/networks
+      { enableHighAccuracy: true, timeout: 30000 }
     );
   }
 
@@ -297,6 +343,7 @@ export function Dashboard() {
     return () => {
       if (liveWatchId.current !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(liveWatchId.current);
+        setLiveEnabled(false);
       }
     };
   }, []);
@@ -363,10 +410,31 @@ export function Dashboard() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button onClick={requestLiveLocation} disabled={locationLoading} className="inline-flex items-center gap-2 rounded-2xl border border-[#7ff0e0]/60 bg-[#74ebda] px-4 py-3 text-sm font-semibold text-[#04110f] shadow-[0_10px_30px_rgba(77,215,176,0.34)] transition hover:bg-[#84f0e3] hover:shadow-[0_14px_34px_rgba(77,215,176,0.42)] disabled:cursor-not-allowed disabled:border-[#7ff0e0]/30 disabled:bg-[#5fd9c7] disabled:text-[#071715] disabled:opacity-100">
-            {locationLoading ? <Loader2 size={16} className="animate-spin text-[#071715]" /> : <LocateFixed size={16} className="text-[#071715]" />}
-            <span className="whitespace-nowrap">{locationLoading ? 'Requesting location...' : 'Enable live location'}</span>
-          </button>
+          {liveEnabled ? (
+            <button
+              onClick={() => {
+                if (liveWatchId.current !== null && navigator.geolocation) {
+                  navigator.geolocation.clearWatch(liveWatchId.current);
+                  liveWatchId.current = null;
+                }
+                setLiveEnabled(false);
+                setStatus('Live location disabled');
+              }}
+              className="inline-flex items-center gap-2 rounded-2xl border border-[#ffb4b4]/60 bg-[#ff9f9f] px-4 py-3 text-sm font-semibold text-[#2b0505] shadow-[0_10px_30px_rgba(255,140,140,0.18)] transition hover:bg-[#ffbdbd]"
+            >
+              <LocateFixed size={16} className="text-[#2b0505]" />
+              <span className="whitespace-nowrap">Disable live location</span>
+            </button>
+          ) : (
+            <button
+              onClick={requestLiveLocation}
+              disabled={locationLoading}
+              className="inline-flex items-center gap-2 rounded-2xl border border-[#7ff0e0]/60 bg-[#74ebda] px-4 py-3 text-sm font-semibold text-[#04110f] shadow-[0_10px_30px_rgba(77,215,176,0.34)] transition hover:bg-[#84f0e3] hover:shadow-[0_14px_34px_rgba(77,215,176,0.42)] disabled:cursor-not-allowed disabled:border-[#7ff0e0]/30 disabled:bg-[#5fd9c7] disabled:text-[#071715] disabled:opacity-100"
+            >
+              {locationLoading ? <Loader2 size={16} className="animate-spin text-[#071715]" /> : <LocateFixed size={16} className="text-[#071715]" />}
+              <span className="whitespace-nowrap">{locationLoading ? 'Requesting location...' : 'Enable live location'}</span>
+            </button>
+          )}
           <button onClick={handleSignOut} className="inline-flex items-center gap-2 rounded-2xl border border-white/12 bg-white/6 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 hover:border-white/20">
             <LogOut size={16} />
             Sign out
@@ -386,7 +454,22 @@ export function Dashboard() {
         ))}
       </section>
 
-      {error ? <div className="rounded-3xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
+      {error ? (
+        <div className="rounded-3xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100 flex items-center justify-between">
+          <div className="mr-4">{error}</div>
+          <div>
+            <button
+              onClick={() => {
+                setError(null);
+                requestLiveLocation();
+              }}
+              className="ml-2 inline-flex items-center gap-2 rounded-2xl border border-rose-300/30 bg-rose-300/10 px-3 py-1 text-sm font-semibold text-rose-100 hover:bg-rose-300/20"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <section className="grid gap-6 lg:grid-cols-[0.85fr_1.3fr] min-h-[760px] lg:h-[calc(100vh-260px)] xl:h-[calc(100vh-220px)]">
         <div className="space-y-4 overflow-y-auto lg:max-h-full">

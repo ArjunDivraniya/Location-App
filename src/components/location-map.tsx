@@ -39,8 +39,46 @@ export function LocationMap({ currentLocation, nearbyUsers, onPickLocation }: Lo
     let active = true;
 
     import('leaflet').then((module) => {
-      if (active) {
+      if (!active) return;
+
+      try {
+        // Ensure Leaflet CSS is present (client-only). Some environments may not have document.head.
+        if (typeof document !== 'undefined') {
+          const existing = document.querySelector('link[href*="leaflet.css"]');
+          if (!existing) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            // Use official Leaflet CDN so the stylesheet is available at runtime
+            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+
+            // Safely find a head element and ensure appendChild exists before calling it
+            const head = document.head || (document.getElementsByTagName ? document.getElementsByTagName('head')[0] : null);
+            if (head && typeof (head as any).appendChild === 'function') {
+              head.appendChild(link);
+            } else {
+              console.warn('[LocationMap] document.head is not available or appendChild not a function; skipping leaflet.css injection');
+            }
+          }
+        }
+
+        // Try to patch default icon paths in case bundler changed asset locations.
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const L = module as any;
+          if (L && L.Icon && L.Icon.Default && typeof L.Icon.Default.mergeOptions === 'function') {
+            L.Icon.Default.mergeOptions({
+              iconRetinaUrl: (L as any).Icon.Default.imagePath ? (L as any).Icon.Default.imagePath + '/marker-icon-2x.png' : undefined,
+              iconUrl: (L as any).Icon.Default.imagePath ? (L as any).Icon.Default.imagePath + '/marker-icon.png' : undefined,
+              shadowUrl: (L as any).Icon.Default.imagePath ? (L as any).Icon.Default.imagePath + '/marker-shadow.png' : undefined,
+            });
+          }
+        } catch (e) {
+          console.warn('[LocationMap] failed to patch Icon.Default', e);
+        }
+
         setLeafletLib(module);
+      } catch (e) {
+        console.error('[LocationMap] error loading leaflet', e);
       }
     });
 

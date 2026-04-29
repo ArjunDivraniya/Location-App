@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, LocateFixed, LogOut, MapPinned, Users } from 'lucide-react';
+import { Loader2, LocateFixed, LogOut, MapPinned, Users, X } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase';
 import type { ChatMessageRow, LocationRow, ProfileRow } from '@/lib/types';
 import type { GeoPoint, NearbyUser } from '@/lib/geo';
@@ -34,6 +34,8 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [liveEnabled, setLiveEnabled] = useState(false);
+  const [showChatMobile, setShowChatMobile] = useState(false);
+  const [showUsersModal, setShowUsersModal] = useState(false);
   const liveWatchId = useRef<number | null>(null);
   const pendingMessages = useRef<
     Array<{
@@ -400,16 +402,19 @@ export function Dashboard() {
 
   return (
     <main className="space-y-6">
-      <section className="flex flex-col gap-4 rounded-[32px] border border-white/10 bg-white/6 p-6 shadow-glow backdrop-blur lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-white/40">Location chat dashboard</p>
-          <h1 className="mt-2 text-3xl font-semibold text-white">Hello, {profile?.display_name ?? 'there'}</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
-            Share your current pin or tap the map, and the app will automatically group you with users inside a 5km radius.
-          </p>
+      <section className="flex flex-col gap-3 rounded-[32px] border border-white/10 bg-white/6 p-4 shadow-glow backdrop-blur lg:flex-row lg:items-center lg:justify-between sm:p-6">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <img src="/logo.svg" alt="Location Chat" className="h-8 w-8 rounded-md sm:h-10 sm:w-10" />
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-white/40">Location chat</p>
+            <h1 className="mt-1 text-xl font-semibold text-white sm:text-3xl">Hello, {profile?.display_name ?? 'there'}</h1>
+            <p className="mt-1 hidden text-xs leading-5 text-white/65 sm:block sm:max-w-2xl sm:text-sm sm:leading-6">
+              Share your pin or tap the map to group with nearby users.
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           {liveEnabled ? (
             <button
               onClick={() => {
@@ -420,24 +425,33 @@ export function Dashboard() {
                 setLiveEnabled(false);
                 setStatus('Live location disabled');
               }}
-              className="inline-flex items-center gap-2 rounded-2xl border border-[#ffb4b4]/60 bg-[#ff9f9f] px-4 py-3 text-sm font-semibold text-[#2b0505] shadow-[0_10px_30px_rgba(255,140,140,0.18)] transition hover:bg-[#ffbdbd]"
+              className="inline-flex items-center gap-1 rounded-2xl border border-[#ffb4b4]/60 bg-[#ff9f9f] px-2 py-2 text-xs font-semibold text-[#2b0505] shadow-[0_10px_30px_rgba(255,140,140,0.18)] transition hover:bg-[#ffbdbd] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm"
             >
-              <LocateFixed size={16} className="text-[#2b0505]" />
-              <span className="whitespace-nowrap">Disable live location</span>
+              <LocateFixed size={14} className="text-[#2b0505] sm:size-4" />
+              <span className="hidden sm:inline">Disable</span>
             </button>
           ) : (
             <button
               onClick={requestLiveLocation}
               disabled={locationLoading}
-              className="inline-flex items-center gap-2 rounded-2xl border border-[#7ff0e0]/60 bg-[#74ebda] px-4 py-3 text-sm font-semibold text-[#04110f] shadow-[0_10px_30px_rgba(77,215,176,0.34)] transition hover:bg-[#84f0e3] hover:shadow-[0_14px_34px_rgba(77,215,176,0.42)] disabled:cursor-not-allowed disabled:border-[#7ff0e0]/30 disabled:bg-[#5fd9c7] disabled:text-[#071715] disabled:opacity-100"
+              className="inline-flex items-center gap-1 rounded-2xl border border-[#7ff0e0]/60 bg-[#74ebda] px-2 py-2 text-xs font-semibold text-[#04110f] shadow-[0_10px_30px_rgba(77,215,176,0.34)] transition hover:bg-[#84f0e3] hover:shadow-[0_14px_34px_rgba(77,215,176,0.42)] disabled:cursor-not-allowed disabled:border-[#7ff0e0]/30 disabled:bg-[#5fd9c7] disabled:text-[#071715] disabled:opacity-100 sm:gap-2 sm:px-4 sm:py-3 sm:text-sm"
             >
-              {locationLoading ? <Loader2 size={16} className="animate-spin text-[#071715]" /> : <LocateFixed size={16} className="text-[#071715]" />}
-              <span className="whitespace-nowrap">{locationLoading ? 'Requesting location...' : 'Enable live location'}</span>
+              {locationLoading ? <Loader2 size={14} className="animate-spin text-[#071715] sm:size-4" /> : <LocateFixed size={14} className="text-[#071715] sm:size-4" />}
+              <span className="hidden sm:inline">{locationLoading ? 'Requesting...' : 'Enable location'}</span>
             </button>
           )}
-          <button onClick={handleSignOut} className="inline-flex items-center gap-2 rounded-2xl border border-white/12 bg-white/6 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 hover:border-white/20">
-            <LogOut size={16} />
-            Sign out
+
+          {/* Mobile: open chat full-screen */}
+          <button
+            onClick={() => setShowChatMobile(true)}
+            className="inline-flex items-center gap-1 rounded-2xl border border-white/12 bg-white/6 px-2 py-2 text-xs font-semibold text-white transition hover:bg-white/10 hover:border-white/20 md:hidden"
+            aria-label="Open chat"
+          >
+            Chat
+          </button>
+          <button onClick={handleSignOut} className="inline-flex items-center gap-1 rounded-2xl border border-white/12 bg-white/6 px-2 py-2 text-xs font-semibold text-white transition hover:bg-white/10 hover:border-white/20 sm:gap-2 sm:px-4 sm:py-3 sm:text-sm">
+            <LogOut size={14} className="sm:size-4" />
+            <span className="hidden sm:inline">Sign out</span>
           </button>
         </div>
       </section>
@@ -471,8 +485,45 @@ export function Dashboard() {
         </div>
       ) : null}
 
-      <section className="grid gap-6 lg:grid-cols-[0.85fr_1.3fr] min-h-[760px] lg:h-[calc(100vh-260px)] xl:h-[calc(100vh-220px)]">
+      <section className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-[0.85fr_1.3fr] min-h-[600px] md:min-h-[760px] md:h-[calc(100vh-280px)] lg:h-[calc(100vh-260px)] xl:h-[calc(100vh-220px)]">
         <div className="space-y-4 overflow-y-auto lg:max-h-full">
+          {/* Nearby users list — show first 4, with an option to view more */}
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:gap-4">
+            {nearbyUsers
+              .filter((u) => u.distanceKm <= 5)
+              .slice(0, 4)
+              .map((user) => {
+                const isActive = roomKey !== null && user.roomKey === roomKey;
+                return (
+                  <article key={user.id} className="rounded-[24px] border border-white/10 bg-white/6 p-3 sm:p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-sm text-white sm:text-base">{user.displayName}</p>
+                        <p className="truncate text-xs text-white/55 sm:text-sm">{user.roomKey}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${isActive ? 'bg-green-100 text-green-800' : 'bg-white/5 text-white/70'}`}>
+                          {isActive ? 'Active' : 'Nearby'}
+                        </span>
+                        <span className="rounded-full bg-aqua/15 px-2 py-0.5 text-xs font-semibold text-aqua">{formatDistance(user.distanceKm)}</span>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-white/60 sm:mt-3 sm:text-sm" suppressHydrationWarning>
+                      Updated {new Date(user.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </article>
+                );
+              })}
+
+            {nearbyUsers.length > 4 ? (
+              <article className="rounded-[24px] border border-white/10 bg-white/6 p-4 flex items-center justify-center">
+                <button onClick={() => setShowUsersModal(true)} className="rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/5">
+                  {`View all ${nearbyUsers.length} nearby`}
+                </button>
+              </article>
+            ) : null}
+          </div>
+
           <LocationMap
             currentLocation={currentLocation}
             nearbyUsers={nearbyUsers}
@@ -480,23 +531,6 @@ export function Dashboard() {
               await persistLocation(point);
             }}
           />
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            {nearbyUsers.slice(0, 2).map((user) => (
-              <article key={user.id} className="rounded-[24px] border border-white/10 bg-white/6 p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-white">{user.displayName}</p>
-                    <p className="text-sm text-white/55">{user.roomKey}</p>
-                  </div>
-                  <span className="rounded-full bg-aqua/15 px-3 py-1 text-xs font-semibold text-aqua">{formatDistance(user.distanceKm)}</span>
-                </div>
-                <p className="mt-3 text-sm text-white/60" suppressHydrationWarning>
-                  Updated {new Date(user.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </article>
-            ))}
-          </div>
         </div>
 
         <ChatPanel
@@ -507,6 +541,55 @@ export function Dashboard() {
           onSendMessage={handleSendMessage}
         />
       </section>
+
+      {showChatMobile ? (
+        <div className="fixed inset-0 z-50 flex items-stretch bg-black/80 p-4 md:hidden">
+          <div className="mx-auto w-full max-w-md">
+            <div className="flex items-center justify-between pb-3">
+              <div className="text-white font-semibold">Chat</div>
+              <button onClick={() => setShowChatMobile(false)} className="rounded-full bg-white/6 p-2 text-white">
+                <X />
+              </button>
+            </div>
+            <div className="h-[calc(100vh-96px)] overflow-hidden rounded-2xl border border-white/10 bg-white/6">
+              <ChatPanel roomKey={roomKey} messages={messages} profileMap={profileMap} currentUserId={sessionUserId ?? ''} onSendMessage={handleSendMessage} />
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {showUsersModal ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4">
+          <div className="mx-auto w-full max-w-lg">
+            <div className="rounded-2xl border border-white/10 bg-white/6 p-4">
+              <div className="flex items-center justify-between pb-3">
+                <div className="text-white font-semibold">Nearby users</div>
+                <button onClick={() => setShowUsersModal(false)} className="rounded-full bg-white/6 p-2 text-white">Close</button>
+              </div>
+              <div className="grid gap-3">
+                {nearbyUsers
+                  .filter((u) => u.distanceKm <= 5)
+                  .map((user) => {
+                    const isActive = roomKey !== null && user.roomKey === roomKey;
+                    return (
+                      <div key={user.id} className="flex items-center justify-between rounded-lg border border-white/6 p-3">
+                        <div>
+                          <div className="font-semibold text-white">{user.displayName}</div>
+                          <div className="text-sm text-white/60">{user.roomKey}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isActive ? 'bg-green-100 text-green-800' : 'bg-white/5 text-white/70'}`}>
+                            {isActive ? 'Active' : 'Nearby'}
+                          </span>
+                          <span className="text-sm text-white/60">{formatDistance(user.distanceKm)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

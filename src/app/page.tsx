@@ -1,4 +1,5 @@
-import { AuthPanel } from '@/components/auth-panel';
+import dynamic from 'next/dynamic';
+const AuthModal = dynamic(() => import('@/components/auth-modal').then((m) => m.default), { ssr: false });
 import { Globe2, MessageCircleMore, Radar, Route } from 'lucide-react';
 
 const featureCards = [
@@ -12,9 +13,9 @@ export default function HomePage() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(77,215,176,0.18),_transparent_28%),linear-gradient(180deg,#07111f_0%,#050b15_100%)] px-4 py-8 text-white sm:px-6 lg:px-8">
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-center gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <section className="space-y-8">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 backdrop-blur">
-            <Globe2 size={16} className="text-aqua" />
-            Next.js + Supabase + OpenStreetMap
+          <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 backdrop-blur">
+            <img src="/logo.svg" alt="Location Chat" className="h-6 w-6" />
+            <span>Next.js + Supabase + OpenStreetMap</span>
           </div>
 
           <div className="space-y-4">
@@ -45,7 +46,7 @@ export default function HomePage() {
               Login or sign up to enter the dashboard, share your position, and join the closest group automatically.
             </p>
             <div className="mt-6">
-              <AuthPanel />
+              <AuthModal />
             </div>
           </div>
         </aside>

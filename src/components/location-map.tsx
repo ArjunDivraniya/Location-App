@@ -38,29 +38,25 @@ export function LocationMap({ currentLocation, nearbyUsers, onPickLocation }: Lo
   useEffect(() => {
     let active = true;
 
+    // Inject Leaflet CSS into document head (if available)
+    if (typeof document !== 'undefined' && document.head) {
+      const existing = document.querySelector('link[href*="leaflet"]');
+      if (!existing) {
+        try {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          document.head.appendChild(link);
+        } catch (e) {
+          console.warn('[LocationMap] Failed to inject leaflet.css', e);
+        }
+      }
+    }
+
     import('leaflet').then((module) => {
       if (!active) return;
 
       try {
-        // Ensure Leaflet CSS is present (client-only). Some environments may not have document.head.
-        if (typeof document !== 'undefined') {
-          const existing = document.querySelector('link[href*="leaflet.css"]');
-          if (!existing) {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            // Use official Leaflet CDN so the stylesheet is available at runtime
-            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-
-            // Safely find a head element and ensure appendChild exists before calling it
-            const head = document.head || (document.getElementsByTagName ? document.getElementsByTagName('head')[0] : null);
-            if (head && typeof (head as any).appendChild === 'function') {
-              head.appendChild(link);
-            } else {
-              console.warn('[LocationMap] document.head is not available or appendChild not a function; skipping leaflet.css injection');
-            }
-          }
-        }
-
         // Try to patch default icon paths in case bundler changed asset locations.
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
